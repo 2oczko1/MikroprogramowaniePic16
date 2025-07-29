@@ -1,0 +1,70 @@
+Rozwinąć wersję projektu z przykładu 4 do postaci, obejmującej rozwiązania zaimplementowane pod koniec ćwiczeń objętych tematyką instrukcji nr 3, tj. wersji, w której zadanie zmiany – co 1s, stanów portu D wg wzorów zapisanych w TablicaPrzelacz, realizowane jest w procedurze obsługi przerwania z modułu Timer2, podczas gdy, zerowanie zmiennej INDEKS, określającej dostęp do kolejnych elementów tablicy TablicaPrzelacz, następuje w procedurze obsługi przerwania z modułu Timer0
+
+
+#include "xc.h"
+#pragma config "FOSC = HS, WDTE  = OFF, PWRTE = OFF, CP = OFF, BOREN = OFF" //wdte - watch wlaczony to timer domyslny
+#define XTAL_FREQ 4MHZ
+//#define Freq 4
+#define bitset(var,bitno) ((var) |= 1UL < < (bitno))
+#define bitclr(var,bitno) ((var) &= ~(1UL < < (bitno)))
+extern void Initialize(void);
+extern void Toogle(int ind);
+extern char bin2str(unsigned char vector);
+#define Toogle_Period 250
+
+    unsigned char FirstState = 0b00000001;
+    unsigned char portStates[8];
+    unsigned char licznik_tpt2 = Toogle_Period;
+    unsigned char index = 0;
+    
+    void main(void) {
+    char i;
+    
+    portStates[0] = FirstState; //0b00000001;
+    portStates[1] = 0b00000011;
+    portStates[2] = 0b00000110;
+    portStates[3] = 0b00000010;
+    portStates[4] = 0b00000101;
+    portStates[5] = 0b00000100;
+    portStates[6] = 0b00000111;
+    portStates[7] = 0b00000110;
+    Initialize();
+
+    while(1) {
+    //main loop is empty
+
+    }
+}
+void Initialize() {
+    index = 0;
+    licznik_tpt2 = Toogle_Period;
+
+    TRISD = 0; // ustawienie dla portu D na output,wyjscie
+    PORTD = 0;
+    TMR0 = 8;
+    TMR0IE  = 1;
+    T2CON = 0b01001101; //A = 4; C = 10; TMR2ON = 1;
+    PR2 = 99; //B = 250; Tpt2 = 10 ms
+    TMR2IE = 1;
+    INTCON = 0b1110100; //GIE = 1, PEIE = 1; T0IE = 1; T0IF = 1;
+    OPTION_REG = 0b00000011; //preskaler wdt 1:8 
+   
+}
+//#pragma interrupt_level 1
+void Toogle(index) {
+    PORTD = portStates[index];
+}
+//#pragma interrupt_level 1
+void interrupt ProcObsPrzerwania(void) {
+    if(TMR2IF) {
+    TMR2IF = 0;
+    if (--licznik_tpt2 == 0) {
+        //if (index == 8) index = 0;
+        Toogle(index++);
+        licznik_tpt2 = Toogle_Period;
+        }
+    }
+    if(T0IF) {
+        T0IF = 0;
+        if (index == 8) index = 0; 
+    }
